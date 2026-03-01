@@ -689,7 +689,7 @@ async function loadMyBookings(){
     prevPendingCount=pendingForMe.length;
     myBookings=fresh;
     // Check for upcoming trip time alerts
-    checkUpcomingAlerts(fresh);
+
     renderAll();
   }catch(e){console.error(e);}
 }
@@ -1455,6 +1455,9 @@ let shownUpcomingAlerts = new Set();
 let swRegistration = null;
 
 function initNotifications(){}
+function ensureSW(){}
+function checkUpcomingAlerts(){}
+function sendNotif(){}
 
 function showNotifPrompt(){
   const existing = document.getElementById('notifPromptBanner');
