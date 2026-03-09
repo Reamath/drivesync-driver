@@ -492,39 +492,80 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:15
 
 <!-- AVAILABILITY MODAL -->
 <div class="modal-overlay" id="availabilityModal" style="display:none;align-items:flex-end;">
-  <div class="confirm-sheet" style="max-height:85vh;overflow-y:auto;">
+  <div class="confirm-sheet" style="max-height:90vh;overflow-y:auto;">
     <div class="modal-handle"></div>
     <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">Mark Unavailability</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:20px;">Select a date and time range when you are NOT available</div>
-    <div style="margin-bottom:14px;">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px;">Set a single date or a recurring date range</div>
+
+    <!-- Single vs Range toggle -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button id="av_single_btn" onclick="toggleAvMode('single')"
+        style="flex:1;padding:9px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">Single Date</button>
+      <button id="av_range_btn" onclick="toggleAvMode('range')"
+        style="flex:1;padding:9px;border-radius:8px;border:2px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">Date Range</button>
+    </div>
+
+    <!-- Single date -->
+    <div id="av_single_fields" style="margin-bottom:14px;">
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">Date <span style="color:var(--red)">*</span></label>
       <input type="text" id="av_date" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatAvDate(this)"
         style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);">
     </div>
+
+    <!-- Date range -->
+    <div id="av_range_fields" style="display:none;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">From Date <span style="color:var(--red)">*</span></label>
+          <input type="text" id="av_date_from" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatAvDate(this)"
+            style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:13px;font-family:var(--font);">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">To Date <span style="color:var(--red)">*</span></label>
+          <input type="text" id="av_date_to" placeholder="DD/MM/YYYY" maxlength="10" oninput="formatAvDate(this)"
+            style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:13px;font-family:var(--font);">
+        </div>
+      </div>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:8px;">Days of Week</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;" id="av_days_wrap">
+        <button class="av-day-btn" data-day="Mon" onclick="toggleAvDay(this)" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">Mon</button>
+        <button class="av-day-btn" data-day="Tue" onclick="toggleAvDay(this)" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">Tue</button>
+        <button class="av-day-btn" data-day="Wed" onclick="toggleAvDay(this)" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">Wed</button>
+        <button class="av-day-btn" data-day="Thu" onclick="toggleAvDay(this)" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">Thu</button>
+        <button class="av-day-btn" data-day="Fri" onclick="toggleAvDay(this)" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">Fri</button>
+        <button class="av-day-btn" data-day="Sat" onclick="toggleAvDay(this)" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">Sat</button>
+        <button class="av-day-btn" data-day="Sun" onclick="toggleAvDay(this)" style="padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">Sun</button>
+        <button onclick="selectAllAvDays()" style="padding:7px 10px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;">All</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;">Leave unselected to apply to every day in the range</div>
+    </div>
+
+    <!-- All day vs time range -->
     <div style="margin-bottom:14px;">
-      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:8px;">Unavailable</label>
+      <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:8px;">Unavailable Period</label>
       <div style="display:flex;gap:8px;margin-bottom:10px;">
         <button id="av_allday_btn" onclick="toggleAvAllDay(true)"
-          style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">All Day</button>
+          style="flex:1;padding:9px;border-radius:8px;border:2px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;">All Day</button>
         <button id="av_timerange_btn" onclick="toggleAvAllDay(false)"
-          style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">Time Range</button>
+          style="flex:1;padding:9px;border-radius:8px;border:2px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;">Time Range</button>
       </div>
       <div id="av_timerange_fields" style="display:none;grid-template-columns:1fr 1fr;gap:10px;">
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">From (24hr)</label>
-          <input type="text" id="av_start" placeholder="e.g. 06:00" maxlength="5" oninput="formatAvTime(this)"
+          <input type="text" id="av_start" placeholder="e.g. 18:00" maxlength="5" oninput="formatAvTime(this)"
             style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);">
         </div>
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;">Until (24hr)</label>
-          <input type="text" id="av_end" placeholder="e.g. 18:00" maxlength="5" oninput="formatAvTime(this)"
+          <input type="text" id="av_end" placeholder="e.g. 22:00" maxlength="5" oninput="formatAvTime(this)"
             style="width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);">
         </div>
       </div>
     </div>
+
     <div style="margin-bottom:20px;">
       <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px;">Reason (optional)</label>
-      <input type="text" id="av_note" placeholder="e.g. Day job, birthday, family commitment"
+      <input type="text" id="av_note" placeholder="e.g. Day job, birthday, only available after 18:00"
         style="width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-size:14px;font-family:var(--font);">
     </div>
     <div class="modal-btn-row">
@@ -715,6 +756,7 @@ function enterApp(){
 // ═══════════════════════════════════════════════════
 let driverAvailability = [];
 let avAllDay = true;
+let avMode = 'single'; // 'single' or 'range'
 
 function formatAvDate(el){
   let v = el.value.replace(/\D/g,'').slice(0,8);
@@ -729,6 +771,36 @@ function formatAvTime(el){
   el.value = v;
 }
 
+function toggleAvMode(mode){
+  avMode = mode;
+  const sf = document.getElementById('av_single_fields');
+  const rf = document.getElementById('av_range_fields');
+  const sb_btn = document.getElementById('av_single_btn');
+  const rb = document.getElementById('av_range_btn');
+  if(mode==='single'){
+    sf.style.display='block'; rf.style.display='none';
+    sb_btn.style.background='var(--accent)'; sb_btn.style.color='#fff'; sb_btn.style.borderColor='var(--accent)';
+    rb.style.background='transparent'; rb.style.color='var(--text2)'; rb.style.borderColor='var(--border)';
+  } else {
+    sf.style.display='none'; rf.style.display='block';
+    rb.style.background='var(--accent)'; rb.style.color='#fff'; rb.style.borderColor='var(--accent)';
+    sb_btn.style.background='transparent'; sb_btn.style.color='var(--text2)'; sb_btn.style.borderColor='var(--border)';
+  }
+}
+
+function toggleAvDay(btn){
+  const active = btn.style.background === 'var(--accent)';
+  btn.style.background = active ? 'transparent' : 'var(--accent)';
+  btn.style.color = active ? 'var(--text2)' : '#fff';
+  btn.style.borderColor = active ? 'var(--border)' : 'var(--accent)';
+}
+
+function selectAllAvDays(){
+  document.querySelectorAll('.av-day-btn').forEach(b=>{
+    b.style.background='var(--accent)'; b.style.color='#fff'; b.style.borderColor='var(--accent)';
+  });
+}
+
 function toggleAvAllDay(allDay){
   avAllDay = allDay;
   const tf = document.getElementById('av_timerange_fields');
@@ -736,20 +808,26 @@ function toggleAvAllDay(allDay){
   const tb = document.getElementById('av_timerange_btn');
   if(allDay){
     tf.style.display = 'none';
-    ab.style.background = 'var(--accent)'; ab.style.color = '#fff'; ab.style.borderColor = 'var(--accent)';
-    tb.style.background = 'transparent'; tb.style.color = 'var(--text2)'; tb.style.borderColor = 'var(--border)';
+    ab.style.background='var(--accent)'; ab.style.color='#fff'; ab.style.borderColor='var(--accent)';
+    tb.style.background='transparent'; tb.style.color='var(--text2)'; tb.style.borderColor='var(--border)';
   } else {
     tf.style.display = 'grid';
-    tb.style.background = 'var(--accent)'; tb.style.color = '#fff'; tb.style.borderColor = 'var(--accent)';
-    ab.style.background = 'transparent'; ab.style.color = 'var(--text2)'; ab.style.borderColor = 'var(--border)';
+    tb.style.background='var(--accent)'; tb.style.color='#fff'; tb.style.borderColor='var(--accent)';
+    ab.style.background='transparent'; ab.style.color='var(--text2)'; ab.style.borderColor='var(--border)';
   }
 }
 
 function showAvailabilityModal(){
   document.getElementById('av_date').value = '';
+  document.getElementById('av_date_from').value = '';
+  document.getElementById('av_date_to').value = '';
   document.getElementById('av_start').value = '';
   document.getElementById('av_end').value = '';
   document.getElementById('av_note').value = '';
+  document.querySelectorAll('.av-day-btn').forEach(b=>{
+    b.style.background='transparent'; b.style.color='var(--text2)'; b.style.borderColor='var(--border)';
+  });
+  toggleAvMode('single');
   toggleAvAllDay(true);
   const m = document.getElementById('availabilityModal');
   m.style.display = 'flex';
@@ -762,14 +840,14 @@ function closeAvailabilityModal(){
   setTimeout(()=>{ m.style.display='none'; },300);
 }
 
-async function saveAvailability(){
-  const date = document.getElementById('av_date').value.trim();
-  const note = document.getElementById('av_note').value.trim();
-  if(!date || date.length < 10){ toast('Please enter a valid date (DD/MM/YYYY)','warn'); return; }
+function parseDMY(str){ const [d,m,y]=str.split('/'); return new Date(+y,+m-1,+d); }
+function formatDMY(date){ return String(date.getDate()).padStart(2,'0')+'/'+String(date.getMonth()+1).padStart(2,'0')+'/'+date.getFullYear(); }
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
+async function saveAvailability(){
+  const note = document.getElementById('av_note').value.trim();
   const session = JSON.parse(localStorage.getItem('hsc_driver_session')||'{}');
   const driverId = session.driverId || null;
-
   let startTime = null, endTime = null;
   if(!avAllDay){
     startTime = document.getElementById('av_start').value.trim();
@@ -777,18 +855,47 @@ async function saveAvailability(){
     if(!startTime || !endTime){ toast('Please enter both From and Until times','warn'); return; }
   }
 
+  const baseRow = {
+    driver_id: driverId,
+    team_id:   driverTeam ? driverTeam.id : null,
+    all_day:   avAllDay,
+    start_time: startTime,
+    end_time:   endTime,
+    note:       note || null
+  };
+
   try {
-    const row = {
-      driver_id:        driverId,
-      team_id:          driverTeam ? driverTeam.id : null,
-      unavailable_date: date,
-      all_day:          avAllDay,
-      start_time:       startTime,
-      end_time:         endTime,
-      note:             note || null
-    };
-    await sb.insert('driver_availability', row);
-    toast('Availability saved ✓','success');
+    if(avMode === 'single'){
+      const date = document.getElementById('av_date').value.trim();
+      if(!date || date.length<10){ toast('Please enter a valid date','warn'); return; }
+      await sb.insert('driver_availability', {...baseRow, unavailable_date: date});
+      toast('Saved ✓','success');
+    } else {
+      const fromStr = document.getElementById('av_date_from').value.trim();
+      const toStr   = document.getElementById('av_date_to').value.trim();
+      if(!fromStr||fromStr.length<10||!toStr||toStr.length<10){ toast('Please enter both dates','warn'); return; }
+      const fromDate = parseDMY(fromStr);
+      const toDate   = parseDMY(toStr);
+      if(toDate < fromDate){ toast('To date must be after From date','warn'); return; }
+      // Which days are selected
+      const selectedDays = [...document.querySelectorAll('.av-day-btn')]
+        .filter(b=>b.style.background==='var(--accent)')
+        .map(b=>b.getAttribute('data-day'));
+      // Expand date range and insert each matching day
+      const rows = [];
+      let cur = new Date(fromDate);
+      while(cur <= toDate){
+        const dayName = DAY_NAMES[cur.getDay()];
+        if(!selectedDays.length || selectedDays.includes(dayName)){
+          rows.push({...baseRow, unavailable_date: formatDMY(cur)});
+        }
+        cur.setDate(cur.getDate()+1);
+      }
+      if(!rows.length){ toast('No matching dates in that range','warn'); return; }
+      // Insert in batches
+      for(const row of rows) await sb.insert('driver_availability', row);
+      toast(rows.length+' dates saved ✓','success');
+    }
     closeAvailabilityModal();
     loadAvailability();
   } catch(e){
@@ -933,7 +1040,17 @@ function startRealtime(){
 // ═══════════════════════════════════════════════════
 function renderAll(){
   const pending  = myBookings.filter(b=>b.driver_status==='pending');
-  const active   = myBookings.filter(b=>['accepted','enroute','atpickup','intrip'].includes(b.driver_status));
+  const active   = myBookings
+    .filter(b=>['accepted','enroute','atpickup','intrip'].includes(b.driver_status))
+    .sort((a,b)=>{
+      const toMs = (date,time) => {
+        if(!date||!time) return 0;
+        const [d,m,y] = date.split('/');
+        const [h,min] = time.split(':');
+        return new Date(+y,+m-1,+d,+h,+min).getTime();
+      };
+      return toMs(a.trip_date,a.trip_time) - toMs(b.trip_date,b.trip_time);
+    });
 
   // Pending tab
   const pb=document.getElementById('pendingBadge');
@@ -1384,10 +1501,37 @@ function makeContactStrip(name, number, bookingId, b){
   </div>`;
 }
 
+function copyAddrToClipboard(addr){
+  navigator.clipboard.writeText(addr).then(()=>toast('Address copied ✓','success')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=addr;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Address copied ✓','success');
+  });
+}
+
+function addrRowWithCopy(icon, label, addr){
+  const mapsUrl = 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(addr);
+  const eid = 'addr_'+Math.random().toString(36).slice(2,8);
+  // Use a data attribute to avoid any quote escaping issues in onclick
+  setTimeout(()=>{
+    const btn = document.getElementById(eid);
+    if(btn) btn.addEventListener('click', ()=>copyAddrToClipboard(addr));
+  }, 0);
+  return '<div class="bc-row" style="align-items:flex-start;">'
+    +'<div class="bc-row-icon">'+icon+'</div>'
+    +'<div class="bc-row-text" style="flex:1;">'
+    +'<strong>'+label+':</strong> '+addr
+    +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">'
+    +'<button id="'+eid+'" '
+    +'style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.07);color:var(--text2);border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;font-family:var(--font);cursor:pointer;">📋 Copy</button>'
+    +'<a href="'+mapsUrl+'" target="_blank" '
+    +'style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,122,255,.12);color:var(--accent);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;font-family:var(--font);text-decoration:none;">🗺 Maps</a>'
+    +'</div>'
+    +'</div></div>';
+}
+
 function cardDetails(b){
   var h = '<div class="bc-details">';
-  if(b.pickup)  h+='<div class="bc-row"><div class="bc-row-icon">📍</div><div class="bc-row-text"><strong>Pick Up:</strong> '+b.pickup+'</div></div>';
-  if(b.dropoff) h+='<div class="bc-row"><div class="bc-row-icon">🏁</div><div class="bc-row-text"><strong>Drop Off:</strong> '+b.dropoff+'</div></div>';
+  if(b.pickup)  h+=addrRowWithCopy('📍','Pick Up',b.pickup);
+  if(b.dropoff) h+=addrRowWithCopy('🏁','Drop Off',b.dropoff);
   if(b.passengers) h+='<div class="bc-row"><div class="bc-row-icon">👤</div><div class="bc-row-text"><strong>Passengers:</strong> '+b.passengers+'</div></div>';
   if(b.service==='AIRPORT'){
     if(b.bags)   h+='<div class="bc-row"><div class="bc-row-icon">🧳</div><div class="bc-row-text"><strong>Bags:</strong> '+b.bags+'</div></div>';
