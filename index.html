@@ -602,7 +602,7 @@ const sb = {
 // ═══════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════
-let driverTeam=null, driverName='', myBookings=[], isDark=true;
+let driverTeam=null, driverName='', myBookings=[], isDark=true, driverVehicles=[];
 let declineTarget=null, realtimeWS=null, pollInterval=null;
 let weekOffset=0, prevPendingCount=-1;
 let isTeamAdmin=false, teamDrivers=[], expandedCards={}, pendingAssignments={};
@@ -748,6 +748,12 @@ function enterApp(){
   startRealtime();
   initNotifications();
   loadAvailability();
+  // Load team vehicles for driver
+  if(driverTeam && driverTeam.id){
+    sb.select('teams','id=eq.'+driverTeam.id).then(rows=>{
+      if(rows&&rows[0]&&rows[0].vehicles) driverVehicles=rows[0].vehicles;
+    }).catch(()=>{});
+  }
 }
 
 
@@ -1683,36 +1689,178 @@ function activeCard(b){
   </div>`;
 }
 
+function fmtTS(iso){
+  if(!iso) return null;
+  const dt=new Date(iso);
+  return dt.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit',hour12:false});
+}
+
+function calcWaitingFee(b){
+  // Only for Airport, Concierge, Treatment — arrived_at to trip_start_at gap
+  const applicable=['AIRPORT','VEHICLE CONCIERGE','TREATMENT CHAUFFEUR'];
+  if(!applicable.includes(b.service)) return 0;
+  if(!b.arrived_at||!b.trip_start_at) return 0;
+  const diffMs=new Date(b.trip_start_at)-new Date(b.arrived_at);
+  if(diffMs<=0) return 0;
+  const blocks=Math.ceil(diffMs/(30*60*1000));
+  return blocks*70;
+}
+
 function historyCard(b){
-  // Completed timestamp block
-  let stamp='';
-  if(b.driver_completed_at){
+  const stamp_html = b.driver_completed_at ? (()=>{
     const dt=new Date(b.driver_completed_at);
     const t=dt.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit',hour12:false});
     const d=dt.toLocaleDateString('en-ZA',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
-    stamp=`<div class="completed-stamp">
+    return `<div class="completed-stamp">
       <div class="completed-stamp-label">✅ Trip Completed</div>
       <div class="completed-stamp-time">${t}</div>
       <div class="completed-stamp-date">${d}</div>
     </div>`;
+  })() : '';
+
+  // Timestamp trail
+  const tsRows=[
+    {ico:'🚗',label:'Enroute',val:fmtTS(b.enroute_at)},
+    {ico:'📍',label:'Arrived',val:fmtTS(b.arrived_at)},
+    {ico:'🛣',label:'Trip Start',val:fmtTS(b.trip_start_at)},
+    {ico:'✅',label:'Completed',val:fmtTS(b.trip_end_at||b.driver_completed_at)},
+  ].filter(r=>r.val);
+  const tsHtml = tsRows.length ? `
+    <div style="margin:0 16px 12px;background:var(--surface2);border-radius:10px;padding:10px 14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Trip Timeline</div>
+      ${tsRows.map(r=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px;"><span style="color:var(--text3)">${r.ico} ${r.label}</span><span style="color:var(--text);font-weight:600;">${r.val}</span></div>`).join('')}
+    </div>` : '';
+
+  // Invoice / waiting fee
+  const baseAmt=parseAmt(b.invoice);
+  const waitFee=calcWaitingFee(b);
+  const totalAmt=baseAmt+waitFee;
+  const submitted=b.invoice_submitted;
+
+  let invoiceBlock='';
+  if(!submitted){
+    const waitRow=waitFee>0?`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--orange);">⏱ Waiting Fee (auto)</span><span style="color:var(--orange);font-weight:700;">${fmtR(waitFee)}</span></div>`:'';
+    const baseRow=baseAmt>0?`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text3);">Base Amount</span><span style="font-weight:600;">${fmtR(baseAmt)}</span></div>`:'';
+    invoiceBlock=`<div style="margin:0 16px 12px;background:rgba(255,214,10,.07);border:1px solid rgba(255,214,10,.2);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;margin-bottom:8px;">💰 Invoice</div>
+      ${baseRow}${waitRow}
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;border-top:1px solid rgba(255,214,10,.2);margin-top:6px;padding-top:6px;">
+        <span>Total</span><span style="color:var(--gold);">${fmtR(totalAmt)}</span>
+      </div>
+      <button onclick="submitInvoice('${b.id}',${totalAmt})"
+        style="width:100%;margin-top:10px;background:var(--gold);color:#000;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;">
+        📤 Submit Invoice
+      </button>
+    </div>`;
+  } else {
+    invoiceBlock=`<div style="margin:0 16px 12px;background:rgba(52,199,89,.07);border:1px solid rgba(52,199,89,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:20px;">✅</span>
+      <div><div style="font-size:12px;font-weight:700;color:var(--green);">Invoice Submitted</div>
+      <div style="font-size:11px;color:var(--text3);">${fmtR(parseAmt(b.invoice_total||b.invoice))} · Awaiting approval</div></div>
+    </div>`;
   }
-  // Invoice block
-  const amt=parseAmt(b.invoice);
-  const inv=amt>0?`<div class="completed-invoice"><span class="completed-invoice-label">💰 Invoice Amount</span><span class="completed-invoice-amount">${fmtR(amt)}</span></div>`:'';
+
   return `<div class="booking-card completed">
     ${cardHeader(b,null)}<div class="bc-divider"></div>${cardDetails(b)}
-    ${stamp}${inv}
-    <div style="padding:8px 16px 14px"><span class="bc-status-badge status-completed">✅ Completed</span></div>
+    ${stamp_html}${tsHtml}${invoiceBlock}
+    <div style="padding:4px 16px 14px"><span class="bc-status-badge status-completed">✅ Completed</span></div>
   </div>`;
+}
+
+async function submitInvoice(id, totalAmt){
+  showConfirm('Submit Invoice',`Submit invoice for ${fmtR(totalAmt)}?
+
+This will notify the dispatcher for approval.`,'📤',async()=>{
+    try{
+      await sb.update('bookings',id,{
+        invoice_submitted: true,
+        invoice_submitted_at: new Date().toISOString(),
+        invoice_total: totalAmt,
+        waiting_fee: calcWaitingFee(myBookings.find(x=>String(x.id)===String(id))||{}),
+      });
+      toast('Invoice submitted ✓','success');
+      await loadMyBookings();
+    }catch(e){ toast('Error submitting invoice','error'); }
+  });
+}
+
+function vehicleSelectHtml(bookingId){
+  if(!driverVehicles||!driverVehicles.length) return '';
+  const opts = driverVehicles.map((v,i)=>`<option value="${i}">${v.colour} ${v.make} ${v.model} — ${(v.reg||'').toUpperCase()}</option>`).join('');
+  return `<div style="margin-bottom:10px;">
+    <select id="vsel_${bookingId}" onchange="saveVehicleChoice('${bookingId}',this.value)"
+      style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--font);">
+      <option value="">— Select vehicle (optional) —</option>
+      ${opts}
+    </select>
+    <div style="font-size:11px;color:var(--text3);margin-top:4px;">📋 Vehicle details will be included in your client message</div>
+  </div>`;
+}
+
+function saveVehicleChoice(bookingId, vehicleIdx){
+  const bk=myBookings.find(x=>String(x.id)===String(bookingId));
+  if(!bk) return;
+  const v = vehicleIdx!=='' ? driverVehicles[parseInt(vehicleIdx)] : null;
+  bk.selected_vehicle = v;
+  // Persist to DB silently
+  sb.update('bookings', bookingId, {selected_vehicle: v}).catch(()=>{});
+}
+
+function getVehicleStr(b){
+  const v = b.selected_vehicle;
+  if(!v||(!v.make&&!v.reg)) return null;
+  return `${v.colour||''} ${v.make||''} ${v.model||''}`.trim() + (v.reg?` — ${v.reg.toUpperCase()}`:'');
+}
+
+function buildClientIntroMsg(b){
+  const v = getVehicleStr(b);
+  const vLine = v ? `\nMy vehicle is a ${v}.` : '';
+  return `Good day ${b.client||''},\n\nMy name is ${driverName} and I will be your driver for your ${b.service||'booking'} on ${b.trip_date||'—'} at ${b.trip_time||'—'}.\n\nI will be collecting you from ${b.pickup||'—'}.${vLine}\n\nPlease don't hesitate to reach out if you need anything.`;
+}
+
+function buildClientEnrouteMsg(b){
+  const v = getVehicleStr(b);
+  const vLine = v ? ` I'll be in the ${v}.` : '';
+  return `Good day ${b.client||''},\n\nI am now on my way to collect you at ${b.pickup||'—'}.${vLine}\n\nSee you shortly!`;
+}
+
+function buildClientArrivedMsg(b){
+  const v = getVehicleStr(b);
+  const vLine = v ? ` I am in the ${v}.` : '';
+  return `Good day ${b.client||''},\n\nI have arrived at ${b.pickup||'—'} and am waiting for you.${vLine}\n\nPlease make your way out when ready.`;
+}
+
+function openClientWA(b, msgType){
+  const raw=(b.contact||'').replace(/\s/g,'');
+  const intl=raw.startsWith('0')?'+27'+raw.slice(1):raw;
+  const num=intl.replace('+','');
+  let msg='';
+  if(msgType==='intro')   msg=buildClientIntroMsg(b);
+  if(msgType==='enroute') msg=buildClientEnrouteMsg(b);
+  if(msgType==='arrived') msg=buildClientArrivedMsg(b);
+  const url=`https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+  window.open(url,'_blank');
 }
 
 function statusActions(b){
   const {driver_status:s,id}=b;
   const cancelBtn = `<button class="action-btn btn-decline" style="margin-top:8px;opacity:.8;font-size:12px;" onclick="openWithdrawModal('${id}')">↩ Can No Longer Do This Trip</button>`;
-  if(s==='accepted') return `<button class="action-btn btn-enroute"  onclick="updStatus('${id}','enroute', '🚗','Set En Route to pickup?')">🚗 En Route to Pickup</button>${cancelBtn}`;
-  if(s==='enroute')  return `<button class="action-btn btn-atpickup" onclick="updStatus('${id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>${cancelBtn}`;
-  if(s==='atpickup') return `<button class="action-btn btn-intrip"   onclick="updStatus('${id}','intrip',  '🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>`;
-  if(s==='intrip')   return `<button class="action-btn btn-complete"  onclick="updStatus('${id}','completed','✅','Confirm trip is complete and client dropped off?')">✅ Complete Trip</button>`;
+
+  if(s==='accepted'){
+    const vSel = vehicleSelectHtml(id);
+    return `${vSel}
+    <button class="action-btn btn-enroute" onclick="updStatus('${id}','enroute','🚗','Set En Route to pickup?')">🚗 En Route to Pickup</button>
+    ${b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'intro')">💬 WhatsApp Client — Introduction</button>`:''}
+    ${cancelBtn}`;
+  }
+  if(s==='enroute') return `
+    <button class="action-btn btn-atpickup" onclick="updStatus('${id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>
+    ${b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'enroute')">💬 WhatsApp Client — I\'m On My Way</button>`:''}
+    ${cancelBtn}`;
+  if(s==='atpickup') return `
+    <button class="action-btn btn-intrip" onclick="updStatus('${id}','intrip','🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>
+    ${b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'arrived')">💬 WhatsApp Client — I\'ve Arrived</button>`:''}`;
+  if(s==='intrip') return `<button class="action-btn btn-complete" onclick="updStatus('${id}','completed','✅','Confirm trip is complete and client dropped off?')">✅ Complete Trip</button>`;
   return '';
 }
 
@@ -1789,9 +1937,23 @@ function openWithdrawModal(id){
 async function updStatus(id,newStatus,icon,msg){
   showConfirm(sLabel(newStatus),msg,icon,async()=>{
     const now=new Date().toISOString();
-    const ex={enroute:{driver_enroute_at:now,pipeline_status:'enroute'},atpickup:{driver_atpickup_at:now,pipeline_status:'atpickup'},intrip:{driver_intrip_at:now,pipeline_status:'atpickup'},completed:{driver_completed_at:now,pipeline_status:'completed'}};
+    const tsMap={
+      enroute:  {enroute_at:now,  pipeline_status:'enroute'},
+      atpickup: {arrived_at:now,  pipeline_status:'atpickup'},
+      intrip:   {trip_start_at:now, pipeline_status:'atpickup'},
+      completed:{trip_end_at:now, driver_completed_at:now, pipeline_status:'completed'}
+    };
     try{
-      await sb.update('bookings',id,{driver_status:newStatus,...(ex[newStatus]||{})});
+      await sb.update('bookings',id,{driver_status:newStatus,...(tsMap[newStatus]||{})});
+      // Update local immediately
+      const bk=myBookings.find(x=>String(x.id)===String(id));
+      if(bk){
+        bk.driver_status=newStatus;
+        if(newStatus==='enroute')  bk.enroute_at=now;
+        if(newStatus==='atpickup') bk.arrived_at=now;
+        if(newStatus==='intrip')   bk.trip_start_at=now;
+        if(newStatus==='completed'){bk.trip_end_at=now;bk.driver_completed_at=now;}
+      }
       toast(sLabel(newStatus),'success');
       if(newStatus==='completed') setTimeout(()=>switchTab('history',document.getElementById('tabBtn-history')),700);
       await loadMyBookings();
