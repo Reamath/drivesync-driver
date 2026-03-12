@@ -1150,12 +1150,13 @@ function regularCardActions(b){
   const id=b.id;
   const cancelBtn=`<button class="action-btn btn-decline" style="margin-top:8px;opacity:.8;font-size:12px;" onclick="openWithdrawModal('${id}')">↩ Can No Longer Do This Trip</button>`;
   const waIntro   = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'intro')">💬 WhatsApp Client — Introduction</button>`:'';
-  const waEnroute = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'enroute')">💬 WhatsApp Client — I'm On My Way</button>`:'';
+  const waEnroute = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'enroute')">💬 WhatsApp Client — On My Way</button>`:'';
   const waArrived = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'arrived')">💬 WhatsApp Client — I've Arrived</button>`:'';
   const vSel = vehicleSelectHtml(b);
-  if(s==='enroute')  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-atpickup" onclick="updStatus('${id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>${waEnroute}${cancelBtn}`;
-  if(s==='atpickup') return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-intrip" onclick="updStatus('${id}','intrip','🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>${waArrived}`;
-  if(s==='intrip')   return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-complete" onclick="updStatus('${id}','completed','✅','Confirm trip is complete?')">✅ Complete Trip</button>`;
+  if(s==='accepted') return `${vSel}<button class="action-btn btn-enroute" onclick="updStatus('${id}','enroute','🚗','Set En Route to pickup?')">🚗 En Route to Pickup</button>${waIntro}${cancelBtn}`;
+  if(s==='enroute')  return `<button class="action-btn btn-atpickup" onclick="updStatus('${id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>${waEnroute}${cancelBtn}`;
+  if(s==='atpickup') return `<button class="action-btn btn-intrip" onclick="updStatus('${id}','intrip','🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>${waArrived}`;
+  if(s==='intrip')   return `<button class="action-btn btn-complete" onclick="updStatus('${id}','completed','✅','Confirm trip is complete?')">✅ Complete Trip</button>`;
   return '';
 }
 
@@ -1849,20 +1850,20 @@ function getVehicleStr(b){
 
 function buildClientIntroMsg(b){
   const v = getVehicleStr(b);
-  const vLine = v ? `\nMy vehicle is a ${v}.` : '';
-  return `Good day ${b.client||''},\n\nMy name is ${driverName} and I will be your driver for your ${b.service||'booking'} on ${b.trip_date||'—'} at ${b.trip_time||'—'}.\n\nI will be collecting you from ${b.pickup||'—'}.${vLine}\n\nPlease don't hesitate to reach out if you need anything.`;
+  const vLine = v ? `\n🚗 My vehicle is a ${v}.` : '';
+  return `👋 Good day ${b.client||''},\n\nMy name is ${driverName} and I will be your driver for your ${b.service||'booking'} on ${b.trip_date||'—'} at ${b.trip_time||'—'}.\n\n📍 I will be collecting you from:\n${b.pickup||'—'}${vLine}\n\nPlease don't hesitate to reach out if you need anything. Looking forward to serving you! 😊`;
 }
 
 function buildClientEnrouteMsg(b){
   const v = getVehicleStr(b);
-  const vLine = v ? ` I'll be in the ${v}.` : '';
-  return `Good day ${b.client||''},\n\nI am now on my way to collect you at ${b.pickup||'—'}.${vLine}\n\nSee you shortly!`;
+  const vLine = v ? `\n🚗 I'll be arriving in the ${v}.` : '';
+  return `👋 Good day ${b.client||''},\n\nThis is ${driverName}. I am now on my way to collect you! 🚗💨${vLine}\n\n📍 Pickup point:\n${b.pickup||'—'}\n\nI'll be with you shortly. Please be ready! ⏱️`;
 }
 
 function buildClientArrivedMsg(b){
   const v = getVehicleStr(b);
-  const vLine = v ? ` I am in the ${v}.` : '';
-  return `Good day ${b.client||''},\n\nI have arrived at ${b.pickup||'—'} and am waiting for you.${vLine}\n\nPlease make your way out when ready.`;
+  const vLine = v ? `\n🚗 I am in the ${v}.` : '';
+  return `👋 Good day ${b.client||''},\n\nThis is ${driverName}. I have arrived at your pickup point and am waiting for you! 📍✅${vLine}\n\n📌 Location:\n${b.pickup||'—'}\n\nPlease make your way out when ready. I'll be right here! 😊`;
 }
 
 function openClientWA(b, msgType){
@@ -1890,7 +1891,7 @@ function statusActions(b){
   }
   if(s==='enroute') return `
     <button class="action-btn btn-atpickup" onclick="updStatus('${id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>
-    ${b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'enroute')">💬 WhatsApp Client — I\'m On My Way</button>`:''}
+    ${b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'enroute')">💬 WhatsApp Client — On My Way</button>`:''}
     ${cancelBtn}`;
   if(s==='atpickup') return `
     <button class="action-btn btn-intrip" onclick="updStatus('${id}','intrip','🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>
