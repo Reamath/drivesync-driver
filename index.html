@@ -994,6 +994,13 @@ async function loadMyBookings(){
     }
     const rows=await sb.select('bookings', query);
     const fresh=rows||[];
+    // Preserve locally selected vehicles — DB update may not have completed yet
+    fresh.forEach(row => {
+      const local = myBookings.find(x=>String(x.id)===String(row.id));
+      if(local && local.selected_vehicle && !row.selected_vehicle) {
+        row.selected_vehicle = local.selected_vehicle;
+      }
+    });
     const pendingForMe = fresh.filter(b=>b.driver_status==='pending');
     if(prevPendingCount>=0 && pendingForMe.length>prevPendingCount){
       // Identify which bookings are actually new
@@ -1145,8 +1152,7 @@ function regularCardActions(b){
   const waIntro   = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'intro')">💬 WhatsApp Client — Introduction</button>`:'';
   const waEnroute = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'enroute')">💬 WhatsApp Client — I'm On My Way</button>`:'';
   const waArrived = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'arrived')">💬 WhatsApp Client — I've Arrived</button>`:'';
-  const vSel = vehicleSelectHtml(id);
-  if(s==='accepted') return `${vSel}<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-enroute" onclick="updStatus('${id}','enroute','🚗','Set En Route to pickup?')">🚗 En Route to Pickup</button>${waIntro}${cancelBtn}`;
+  const vSel = vehicleSelectHtml(b);
   if(s==='enroute')  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-atpickup" onclick="updStatus('${id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>${waEnroute}${cancelBtn}`;
   if(s==='atpickup') return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-intrip" onclick="updStatus('${id}','intrip','🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>${waArrived}`;
   if(s==='intrip')   return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-complete" onclick="updStatus('${id}','completed','✅','Confirm trip is complete?')">✅ Complete Trip</button>`;
@@ -1790,16 +1796,29 @@ This will notify the dispatcher for approval.`,'📤',async()=>{
   });
 }
 
-function vehicleSelectHtml(bookingId){
+function vehicleSelectHtml(b){
+  const bookingId = b.id || b;
+  const savedVehicle = (typeof b === 'object') ? b.selected_vehicle : null;
   if(!driverVehicles||!driverVehicles.length) return `<div style="margin-bottom:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text3);">🚗 No vehicles on file for your team — dispatcher can add them in Drive Teams settings.</div>`;
-  const opts = driverVehicles.map((v,i)=>`<option value="${i}">${v.colour} ${v.make} ${v.model} — ${(v.reg||'').toUpperCase()}</option>`).join('');
+  // Find which index matches the saved vehicle (match by reg or make+model)
+  let savedIdx = '';
+  if(savedVehicle) {
+    savedIdx = driverVehicles.findIndex(v =>
+      (savedVehicle.reg && v.reg && savedVehicle.reg.toLowerCase()===v.reg.toLowerCase()) ||
+      (savedVehicle.make===v.make && savedVehicle.model===v.model && savedVehicle.colour===v.colour)
+    );
+    if(savedIdx === -1) savedIdx = '';
+  }
+  const opts = driverVehicles.map((v,i)=>`<option value="${i}" ${String(i)===String(savedIdx)?'selected':''}>${v.colour} ${v.make} ${v.model} — ${(v.reg||'').toUpperCase()}</option>`).join('');
+  const selectedLabel = savedIdx!=='' ? `✓ ${driverVehicles[savedIdx].colour} ${driverVehicles[savedIdx].make} ${driverVehicles[savedIdx].model}` : 'Vehicle details will be included in your client message';
   return `<div style="margin-bottom:10px;">
+    <label style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">🚗 Your Vehicle</label>
     <select id="vsel_${bookingId}" onchange="saveVehicleChoice('${bookingId}',this.value)"
-      style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--font);">
-      <option value="">— Select vehicle (optional) —</option>
+      style="width:100%;padding:9px;border-radius:8px;border:1px solid ${savedIdx!==''?'var(--green)':'var(--border)'};background:var(--surface2);color:var(--text);font-size:13px;font-family:var(--font);">
+      <option value="">— Select vehicle —</option>
       ${opts}
     </select>
-    <div style="font-size:11px;color:var(--text3);margin-top:4px;">📋 Vehicle details will be included in your client message</div>
+    <div style="font-size:11px;color:${savedIdx!==''?'var(--green)':'var(--text3)'};margin-top:4px;">${savedIdx!==''?'✓ Vehicle saved — included in client messages':'Select above to include in WhatsApp messages'}</div>
   </div>`;
 }
 
@@ -1808,7 +1827,17 @@ function saveVehicleChoice(bookingId, vehicleIdx){
   if(!bk) return;
   const v = vehicleIdx!=='' ? driverVehicles[parseInt(vehicleIdx)] : null;
   bk.selected_vehicle = v;
-  // Persist to DB silently
+  // Visual feedback — update border and label without full re-render
+  const sel = document.getElementById('vsel_'+bookingId);
+  if(sel) {
+    sel.style.borderColor = v ? 'var(--green)' : 'var(--border)';
+    const lbl = sel.parentElement && sel.parentElement.querySelector('div:last-child');
+    if(lbl) {
+      lbl.textContent = v ? '✓ Vehicle saved — included in client messages' : 'Select above to include in WhatsApp messages';
+      lbl.style.color = v ? 'var(--green)' : 'var(--text3)';
+    }
+  }
+  // Persist to DB
   sb.update('bookings', bookingId, {selected_vehicle: v}).catch(()=>{});
 }
 
@@ -1853,7 +1882,7 @@ function statusActions(b){
   const cancelBtn = `<button class="action-btn btn-decline" style="margin-top:8px;opacity:.8;font-size:12px;" onclick="openWithdrawModal('${id}')">↩ Can No Longer Do This Trip</button>`;
 
   if(s==='accepted'){
-    const vSel = vehicleSelectHtml(id);
+    const vSel = vehicleSelectHtml(b);
     return `${vSel}
     <button class="action-btn btn-enroute" onclick="updStatus('${id}','enroute','🚗','Set En Route to pickup?')">🚗 En Route to Pickup</button>
     ${b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'intro')">💬 WhatsApp Client — Introduction</button>`:''}
