@@ -1140,11 +1140,16 @@ function collapsibleCard(b, type){
 
 function regularCardActions(b){
   const s=b.driver_status;
-  const cancelBtn=`<button class="action-btn btn-decline" style="margin-top:8px;opacity:.8;font-size:12px;" onclick="openWithdrawModal('${b.id}')">↩ Can No Longer Do This Trip</button>`;
-  if(s==='accepted') return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-enroute" onclick="updStatus('${b.id}','enroute','🚗','Set En Route to pickup?')">🚗 En Route to Pickup</button>${cancelBtn}`;
-  if(s==='enroute')  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-atpickup" onclick="updStatus('${b.id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>${cancelBtn}`;
-  if(s==='atpickup') return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-intrip" onclick="updStatus('${b.id}','intrip','🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>`;
-  if(s==='intrip')   return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-complete" onclick="updStatus('${b.id}','completed','✅','Confirm trip is complete?')">✅ Complete Trip</button>`;
+  const id=b.id;
+  const cancelBtn=`<button class="action-btn btn-decline" style="margin-top:8px;opacity:.8;font-size:12px;" onclick="openWithdrawModal('${id}')">↩ Can No Longer Do This Trip</button>`;
+  const waIntro   = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'intro')">💬 WhatsApp Client — Introduction</button>`:'';
+  const waEnroute = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'enroute')">💬 WhatsApp Client — I'm On My Way</button>`:'';
+  const waArrived = b.contact?`<button class="action-btn" style="background:rgba(37,211,102,.15);color:#25D366;margin-top:6px;" onclick="openClientWA(myBookings.find(x=>String(x.id)==='${id}'),'arrived')">💬 WhatsApp Client — I've Arrived</button>`:'';
+  const vSel = vehicleSelectHtml(id);
+  if(s==='accepted') return `${vSel}<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-enroute" onclick="updStatus('${id}','enroute','🚗','Set En Route to pickup?')">🚗 En Route to Pickup</button>${waIntro}${cancelBtn}`;
+  if(s==='enroute')  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-atpickup" onclick="updStatus('${id}','atpickup','📍','Confirm arrived at pickup location?')">📍 Arrived at Pickup</button>${waEnroute}${cancelBtn}`;
+  if(s==='atpickup') return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-intrip" onclick="updStatus('${id}','intrip','🛣','Confirm client picked up and trip started?')">🛣 Start Trip</button>${waArrived}`;
+  if(s==='intrip')   return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="bc-status-badge status-${s}">${sLabel(s)}</span></div><button class="action-btn btn-complete" onclick="updStatus('${id}','completed','✅','Confirm trip is complete?')">✅ Complete Trip</button>`;
   return '';
 }
 
@@ -1538,6 +1543,7 @@ function cardDetails(b){
   var h = '<div class="bc-details">';
   if(b.pickup)  h+=addrRowWithCopy('📍','Pick Up',b.pickup);
   if(b.dropoff) h+=addrRowWithCopy('🏁','Drop Off',b.dropoff);
+  if(b.distance) h+='<div class="bc-row"><div class="bc-row-icon">📏</div><div class="bc-row-text"><strong>Distance:</strong> '+b.distance+' km</div></div>';
   if(b.passengers) h+='<div class="bc-row"><div class="bc-row-icon">👤</div><div class="bc-row-text"><strong>Passengers:</strong> '+b.passengers+'</div></div>';
   if(b.service==='AIRPORT'){
     if(b.bags)   h+='<div class="bc-row"><div class="bc-row-icon">🧳</div><div class="bc-row-text"><strong>Bags:</strong> '+b.bags+'</div></div>';
