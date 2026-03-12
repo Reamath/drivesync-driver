@@ -1791,7 +1791,7 @@ This will notify the dispatcher for approval.`,'📤',async()=>{
 }
 
 function vehicleSelectHtml(bookingId){
-  if(!driverVehicles||!driverVehicles.length) return '';
+  if(!driverVehicles||!driverVehicles.length) return `<div style="margin-bottom:10px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text3);">🚗 No vehicles on file for your team — dispatcher can add them in Drive Teams settings.</div>`;
   const opts = driverVehicles.map((v,i)=>`<option value="${i}">${v.colour} ${v.make} ${v.model} — ${(v.reg||'').toUpperCase()}</option>`).join('');
   return `<div style="margin-bottom:10px;">
     <select id="vsel_${bookingId}" onchange="saveVehicleChoice('${bookingId}',this.value)"
